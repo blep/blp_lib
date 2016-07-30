@@ -5,6 +5,8 @@
 
 namespace blp {
 
+/// Inserts nbBits bitsToInsert in value's bits at position insertAt.
+/// bitsToInsert must be less than (1 << nbBits)
 template<typename T, typename U>
 inline T bitsInsert( T value, U bitsToInsert, int insertAt, int nbBits )
 {
@@ -162,17 +164,18 @@ namespace small_lru {
     template<typename T, const int nbEntries, const int bitsPerEntry>
     inline void moveIndexTo( SmallLRUIndex<T, nbEntries, bitsPerEntry> &lru, int index, int insertPos )
     {
+        using Lru = SmallLRUIndex<T, nbEntries, bitsPerEntry>;
         int originalPos = findIndexPos( lru, index );
         assert( originalPos >= 0 );
         // 1) remove the index: preserve all bits before the index and shift the other
         T indexes = lru.indexes_;
-        T removeMask = ~T(0) << (originalPos * bitsPerIndex);
-        indexes = ((indexes >> bitsPerIndex) & removeMask) | (indexes & ~removeMask);
+        T removeMask = ~T(0) << (originalPos * Lru::bitsPerIndex);
+        indexes = ((indexes >> Lru::bitsPerIndex) & removeMask) | (indexes & ~removeMask);
         // 2) insert the index: preserve all bits before the index and shift the other
-        const int insertBitOffset = insertPos * bitsPerIndex;
+        int insertBitOffset = insertPos * Lru::bitsPerIndex;
         T insertMask = ~T(0) << insertBitOffset;
-        T insertedBits = (indexes << bitsPerIndex) | (index << insertBitOffset);
-        indexes = (insertedBits & insertMask) | (indexes & ~insertMask);
+        T shiftedBits = (indexes & insertMask ) << Lru::bitsPerIndex;
+        indexes = shiftedBits | (indexes & ~insertMask) | ( T(index) << insertBitOffset );
         lru.indexes_ = indexes;
     }
     
